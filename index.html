@@ -1,0 +1,983 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>試聴機</title>
+<meta name="apple-mobile-web-app-title" content="試聴機">
+<meta name="theme-color" content="#16142a">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" href="icon-180.png">
+<style>
+:root{
+  --bg:#ffffff; --rail:#ffffff; --surface:#ffffff; --ink:#1d1d1f; --muted:#8a8a8e; --line:rgba(60,60,67,.16);
+  --fill:#f2f2f7; --fill2:#e5e5ea; --accent:#fa2d48; --onaccent:#fff;
+  color-scheme:light;
+  --sans:-apple-system,BlinkMacSystemFont,"SF Pro Text","Hiragino Sans","Hiragino Kaku Gothic ProN","Noto Sans JP",sans-serif;
+  --serif:"Hiragino Mincho ProN","Yu Mincho","Noto Serif JP",serif;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+*,*::before,*::after{box-sizing:border-box}
+html{height:100%;scroll-padding-top:env(safe-area-inset-top,0px)}
+body{
+  height:100%;margin:0;color:var(--ink);font-family:var(--sans);
+  background:var(--bg);
+  -webkit-user-select:none;user-select:none;-webkit-touch-callout:none;
+  touch-action:manipulation;overflow:hidden;
+}
+input,textarea,select{-webkit-user-select:text;user-select:text;font:inherit;color:inherit}
+button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer;-webkit-tap-highlight-color:transparent}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,label.btn:focus-within{outline:2px solid var(--ink);outline-offset:2px}
+img{max-width:100%}
+
+.app{display:grid;grid-template-rows:auto 1fr auto;height:100%}
+.top{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:12px 28px;border-bottom:1px solid var(--line);background:var(--surface)}
+.circle{font-size:1.2rem;font-weight:600;padding:4px 0}
+.top-right{display:flex;align-items:center;gap:18px}
+.top-note{color:var(--muted);font-size:.85rem}
+.home{display:flex;align-items:center;gap:8px;height:44px;padding:0 14px;border-radius:99px;border:1px solid var(--line);font-size:.9rem;font-weight:700;color:var(--muted)}
+.home svg{width:20px;height:20px;fill:currentColor}
+.home:active{background:var(--line)}
+.back{display:none}
+.top-note svg{width:18px;height:18px;fill:currentColor}
+
+.main{display:grid;grid-template-columns:270px 1fr;min-height:0}
+.shelf{overflow-y:auto;padding:0 0 24px;display:flex;flex-direction:column;gap:0;background:var(--rail);border-right:1px solid var(--line);-webkit-overflow-scrolling:touch}
+.shelf-item{display:grid;grid-template-columns:72px 1fr;gap:14px;align-items:center;padding:12px 16px;border-bottom:1px solid var(--line);text-align:left;position:relative}
+.shelf-item.sel{background:var(--surface);box-shadow:inset 3px 0 0 var(--ink)}
+.si-text{display:flex;flex-direction:column;gap:6px;min-width:0}
+.si-title{font-weight:600;line-height:1.4;font-size:.95rem}
+.si-meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:.85rem;color:var(--muted);font-variant-numeric:tabular-nums}
+.so{text-decoration:line-through}
+.si-eq{position:absolute;top:10px;right:12px;font-size:.7rem}
+
+.badge{display:inline-block;font-size:.75rem;font-weight:600;padding:1px 6px;border-radius:2px;line-height:1.5;white-space:nowrap;border:1px solid var(--ink)}
+.b-new{background:var(--ink);color:#fff}
+.b-old{background:transparent;color:var(--ink)}
+.b-soldout{background:#8c8c8c;border-color:#8c8c8c;color:#fff}
+
+.album{display:grid;grid-template-columns:minmax(230px,36%) 1fr;gap:36px;padding:24px 36px 20px 28px;min-height:0;min-width:0;overflow:hidden}
+.album-art{display:flex;flex-direction:column;gap:14px;min-height:0;overflow-y:auto}
+.album-art .jk{width:100%;max-width:min(100%,46vh)}
+.al-title{font-size:clamp(1.35rem,2.3vw,1.8rem);font-weight:600;line-height:1.35;margin:4px 0 0}
+.al-sub{margin:0;color:var(--muted)}
+.al-price{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin-top:4px;padding-top:12px;border-top:1px solid var(--line)}
+.price-label{font-size:.85rem;color:var(--muted)}
+.price{font-size:2rem;font-weight:600;font-variant-numeric:tabular-nums}
+
+.tracklist{overflow-y:auto;min-height:0;padding-right:4px;-webkit-overflow-scrolling:touch}
+.tracklist ol{list-style:none;margin:0;padding:0;border-top:1px solid var(--ink)}
+.tr{display:flex;align-items:stretch;border-bottom:1px solid var(--line)}
+.tr.on{background:var(--surface)}
+.tr-main{flex:1;display:flex;align-items:center;gap:16px;padding:16px 12px;text-align:left;min-height:60px}
+.tr-no{width:26px;color:var(--muted);font-variant-numeric:tabular-nums;flex:none;font-size:.9rem}
+.tr.on .tr-no{color:var(--ink)}
+.tr-title{font-size:1.05rem;line-height:1.4}
+.tr.on .tr-title{font-weight:600}
+.tr-hook{flex:none;margin:12px 8px 12px 0;padding:0 14px;border-radius:2px;border:1px solid var(--ink);color:var(--ink);font-size:.85rem;font-weight:600;white-space:nowrap}
+.tr-hook:active{background:var(--ink);color:#fff}
+.empty{color:var(--muted);padding:40px 0;line-height:1.8}
+
+.pm{font-size:.8em;color:var(--ink)}
+
+/* player */
+.player{background:var(--surface);border-top:1px solid var(--ink);padding:14px 36px 18px;display:flex;flex-direction:column;gap:12px}
+.pl-top{display:flex;justify-content:space-between;align-items:baseline;gap:16px}
+.pl-now{min-width:0;display:flex;align-items:baseline;gap:12px;overflow:hidden;text-align:left}
+.pl-title{font-weight:600;font-size:1.05rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pl-album{color:var(--muted);font-size:.9rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pl-time{font-variant-numeric:tabular-nums;color:var(--muted);white-space:nowrap;font-size:1rem}
+.pl-time b{color:var(--ink);font-weight:600}
+
+.seek{position:relative;height:52px;border-radius:2px;background:#e4e4e4;touch-action:none;cursor:pointer;overflow:hidden}
+.seek.off{cursor:default}
+.seek-fill{position:absolute;inset:0 auto 0 0;width:0;background:var(--accent)}
+.seek-knob{display:none}
+.tick{position:absolute;top:0;bottom:0;width:1px;background:#fff;mix-blend-mode:difference;pointer-events:none}
+.tick span{position:absolute;bottom:3px;left:5px;font-size:.7rem;white-space:nowrap;color:#fff}
+.seek-bubble{position:absolute;top:50%;transform:translate(-50%,-50%);font-weight:700;font-variant-numeric:tabular-nums;background:#fff;color:var(--ink);border:1px solid var(--ink);padding:3px 8px;border-radius:2px;pointer-events:none;display:none;font-size:.95rem}
+.seek.drag .seek-bubble{display:block}
+
+.pl-ctrl{display:flex;align-items:center;gap:20px;flex-wrap:wrap}
+.transport{display:flex;align-items:center;gap:6px}
+.tbtn{min-width:56px;height:56px;border-radius:2px;display:grid;place-items:center;font-weight:600;font-size:.9rem;padding:0 10px}
+.tbtn:active{background:var(--line)}
+.tbtn svg{width:26px;height:26px;fill:currentColor}
+.tbtn.play{width:64px;height:64px;border-radius:2px;background:var(--ink);color:#fff;margin:0 6px}
+.tbtn.play svg{width:28px;height:28px}
+.tbtn[disabled]{opacity:.3}
+.hooks{display:flex;gap:10px;flex-wrap:wrap}
+.hook{height:50px;padding:0 18px;border-radius:2px;border:1px solid var(--ink);color:var(--ink);font-weight:600;display:flex;align-items:center;gap:10px}
+.hook small{font-weight:400;color:var(--muted);font-variant-numeric:tabular-nums}
+.hook:active{background:var(--ink);color:#fff}
+.hook:active small{color:#ccc}
+
+/* jacket */
+.jk{position:relative;aspect-ratio:1;border-radius:1px;overflow:hidden;container-type:inline-size;background:var(--c);flex:none}
+.jk img{width:100%;height:100%;object-fit:cover;display:block}
+.jk-demo{position:absolute;inset:0;background:var(--c)}
+.jk-demo span{position:absolute;left:8%;right:8%;bottom:7%;color:#fff;font-size:8cqw;font-weight:600;line-height:1.3}
+
+/* attract */
+.attract{position:fixed;inset:0;z-index:30;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:40px;
+  background:var(--bg);
+  padding:calc(24px + env(safe-area-inset-top,0px)) 24px calc(24px + env(safe-area-inset-bottom,0px));text-align:center}
+.attract[hidden]{display:none}
+.at-circle{font-size:clamp(1.6rem,4vw,2.6rem);font-weight:600;margin:0}
+.at-row{display:flex;gap:22px;justify-content:center;flex-wrap:wrap;max-width:100%}
+.at-row .at-item{width:clamp(110px,16vw,190px);display:flex;flex-direction:column;gap:10px;align-items:center}
+.at-row .jk{width:100%}
+.at-row .at-cap{font-size:.95rem;display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:center}
+.at-msg{font-size:1.05rem;color:var(--muted)}
+
+/* admin */
+.admin{position:fixed;inset:0;z-index:40;background:var(--bg);display:flex;flex-direction:column;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+.admin[hidden]{display:none}
+.ad-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 24px;border-bottom:1px solid var(--line);background:var(--surface)}
+.ad-bar h2{margin:0;font-size:1.15rem}
+.ad-bar div{display:flex;gap:10px}
+.ad-body{flex:1;overflow-y:auto;padding:20px 24px 60px;-webkit-overflow-scrolling:touch}
+.ad-inner{max-width:760px;margin:0 auto;display:flex;flex-direction:column;gap:28px}
+.ad-sec h3{margin:0 0 12px;font-size:1.05rem}
+.hint{color:var(--muted);font-size:.9rem;margin:0 0 12px;line-height:1.6}
+.fld{display:flex;flex-direction:column;gap:6px;margin-bottom:14px}
+.fld span{font-size:.9rem;color:var(--muted)}
+.fld input,.fld select,.ed-tr textarea,.ed-tr-top input{border:1px solid var(--line);background:var(--surface);border-radius:2px;padding:12px;font-size:1rem;width:100%}
+.fld input[type=color]{height:48px;padding:4px;width:90px}
+.chk{display:flex;gap:12px;align-items:center;font-size:1rem;padding:6px 0}
+.chk input{width:24px;height:24px;accent-color:var(--accent)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:46px;padding:0 18px;border-radius:2px;background:var(--surface);border:1px solid var(--line);font-weight:700;font-size:.95rem;cursor:pointer;position:relative}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--onaccent)}
+.btn.danger{color:#c43a3a;border-color:color-mix(in srgb,#c43a3a 40%,transparent)}
+.btn.small{min-height:38px;padding:0 12px;font-size:.85rem}
+.vh{position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;clip:rect(0 0 0 0)}
+.ad-list{list-style:none;margin:0 0 14px;padding:0;display:flex;flex-direction:column;gap:8px}
+.ad-list li{display:grid;grid-template-columns:56px 1fr auto;gap:14px;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:2px;padding:10px}
+.ad-list small{display:block;color:var(--muted);margin-top:4px}
+.row-btns{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.ed-head{display:grid;grid-template-columns:200px 1fr;gap:20px;align-items:start}
+.ed-jk{display:flex;flex-direction:column;gap:10px}
+.ed-tracks{list-style:none;margin:0 0 14px;padding:0;display:flex;flex-direction:column;gap:10px}
+.ed-tr{background:var(--surface);border:1px solid var(--line);border-radius:2px;padding:12px;display:flex;flex-direction:column;gap:10px}
+.ed-tr-top{display:flex;gap:10px;align-items:center}
+.ed-tr-top .no{width:24px;text-align:right;color:var(--muted);flex:none}
+.ed-tr-top input{flex:1;min-width:0}
+.ed-tr-sub{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;font-size:.88rem;color:var(--muted)}
+.ed-tr textarea{resize:vertical;min-height:64px;font-size:.95rem}
+
+.toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:12px 20px;border-radius:2px;z-index:60;font-weight:600;opacity:0;pointer-events:none;transition:opacity .25s;max-width:90vw;text-align:center}
+.toast.show{opacity:1}
+
+/* narrow / portrait */
+@media (max-width: 900px), (orientation: portrait){
+  .shelf{border-right:0;border-bottom:1px solid var(--line)}
+  .shelf-item{border-bottom:0}
+  .main{grid-template-columns:1fr;grid-template-rows:auto 1fr}
+  .shelf{flex-direction:row;overflow-x:auto;overflow-y:hidden;padding:4px 16px 10px;gap:8px}
+  .shelf-item{grid-template-columns:1fr;width:132px;flex:none;gap:8px;padding:8px}
+  .shelf-item.sel{box-shadow:inset 0 -3px 0 var(--ink)}
+  .si-title{font-size:.88rem}
+  .album{grid-template-columns:1fr;grid-template-rows:auto 1fr;gap:16px;padding:6px 20px 14px}
+  .album-art{display:grid;grid-template-columns:min(240px,32vw) 1fr;gap:4px 18px;align-items:start;overflow:visible}
+  .album-art .jk{grid-row:1 / span 4;max-width:100%}
+  .al-title{margin:0}
+  .price{font-size:1.8rem}
+  .player{padding:14px 20px 16px}
+  .top{padding:12px 20px 8px}
+  .ed-head{grid-template-columns:1fr}
+  .ed-jk .jk{max-width:200px}
+}
+@media (max-width: 560px){
+  .album-art{grid-template-columns:110px 1fr}
+  .tbtn{min-width:48px}
+  .tbtn.play{width:64px;height:64px}
+  .ad-list li{grid-template-columns:48px 1fr}
+  .ad-list .row-btns{grid-column:1 / -1}
+}
+/* phone: two screens (album list / album) */
+@media (max-width: 700px), (max-height: 500px){
+  .top{padding:8px 16px 6px}
+  .circle{font-size:1.15rem}
+  .top-note{display:none}
+  .home{height:40px;padding:0 12px;font-size:.85rem}
+  .main{grid-template-columns:1fr;grid-template-rows:auto minmax(0,1fr)}
+  .shelf{display:flex;flex-direction:row;overflow-x:auto;overflow-y:hidden;gap:8px;padding:4px 16px 10px;scroll-padding:0 16px}
+  .shelf-item{flex:none;width:auto;max-width:210px;grid-template-columns:48px auto;gap:10px;padding:6px 14px 6px 6px;border-radius:2px;border-bottom:0;background:var(--surface)}
+  .shelf-item.sel{background:var(--surface);box-shadow:inset 0 0 0 1.5px var(--ink)}
+  .si-text{gap:3px}
+  .si-title{font-size:.85rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .si-meta{font-size:.78rem;gap:6px;flex-wrap:nowrap}
+  .si-meta .badge{font-size:.7rem;padding:1px 6px}
+  .si-eq{top:4px;right:6px}
+  .shelf-item.playing,.shelf-item:has(.si-eq){padding-right:24px}
+  .shelf-item{max-width:150px;grid-template-columns:40px auto;gap:8px;padding:5px 12px 5px 5px}
+  .si-meta{display:none}
+  .album{grid-template-columns:1fr;grid-template-rows:auto minmax(0,1fr);gap:12px;padding:4px 16px 10px}
+  .album-art{grid-template-columns:96px 1fr;gap:2px 14px}
+  .al-title{font-size:1.25rem}
+  .al-sub{font-size:.85rem}
+  .price{font-size:1.4rem}
+  .price-label{font-size:.8rem}
+  .tr-main{padding:12px 8px;min-height:54px;gap:12px}
+  .tr-title{font-size:1rem}
+  .tr-hook{margin:8px 4px 8px 0;padding:0 12px;font-size:.82rem}
+  .player{padding:10px 16px 12px;gap:10px}
+  .pl-title{font-size:1rem}
+  .pl-time{font-size:.9rem}
+  .seek{height:46px}
+  .pl-ctrl{flex-direction:column;align-items:stretch;gap:10px}
+  .transport{justify-content:space-between;gap:2px}
+  .tbtn{min-width:48px;height:48px;padding:0 6px;font-size:.85rem}
+  .tbtn.play{width:60px;height:60px;margin:0}
+  .tbtn.play svg{width:28px;height:28px}
+  .hooks{flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:2px}
+  .hook{height:44px;padding:0 16px;flex:none}
+  .at-row{gap:14px}
+  .at-row .at-item{width:clamp(90px,28vw,150px)}
+  .attract{gap:24px}
+  .at-msg{font-size:1.05rem;padding:14px 26px}
+}
+/* phone portrait: optional vertical rail (jacket + title) */
+@media (max-width: 700px){
+  body[data-shelf="v"] .shelf{border-right:1px solid var(--line);border-bottom:0}
+  body[data-shelf="v"] .shelf-item{border-bottom:1px solid var(--line)}
+  body[data-shelf="v"] .main{grid-template-columns:96px minmax(0,1fr);grid-template-rows:minmax(0,1fr)}
+  body[data-shelf="v"] .shelf{flex-direction:column;overflow-x:hidden;overflow-y:auto;padding:2px 2px 10px 10px;gap:6px}
+  body[data-shelf="v"] .shelf-item,body[data-shelf="v"] .shelf-item.playing,body[data-shelf="v"] .shelf-item:has(.si-eq){grid-template-columns:1fr;gap:5px;padding:5px 5px 7px;max-width:none}
+  body[data-shelf="v"] .shelf-item .si-text{display:flex}
+  body[data-shelf="v"] .shelf-item .jk{width:58px;justify-self:center}
+  body[data-shelf="v"] .shelf-item{text-align:center}
+  body[data-shelf="v"] .si-meta{display:none}
+  body[data-shelf="v"] .si-title{font-size:.72rem;line-height:1.35;white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  body[data-shelf="v"] .si-eq{top:9px;right:9px;background:var(--surface);border-radius:4px;padding:2px}
+  body[data-shelf="v"] .album{padding:4px 14px 10px 8px}
+  body[data-shelf="v"] .album-art{grid-template-columns:72px 1fr;gap:2px 12px}
+  body[data-shelf="v"] .al-title{font-size:1.05rem}
+  body[data-shelf="v"] .al-sub{font-size:.78rem}
+  body[data-shelf="v"] .price{font-size:1.25rem}
+  body[data-shelf="v"] .al-price{column-gap:6px}
+  body[data-shelf="v"] .tr-main{gap:8px;padding:12px 4px}
+  body[data-shelf="v"] .tr-no{width:20px}
+  body[data-shelf="v"] .tr-title{font-size:.95rem}
+  body[data-shelf="v"] .tr-hook{padding:0 10px;font-size:.78rem}
+}
+/* iPad portrait: optional vertical shelf */
+@media (min-width: 701px) and (min-height: 501px) and (max-width: 900px), (min-width: 701px) and (min-height: 501px) and (orientation: portrait){
+  body[data-shelf="v"] .main{grid-template-columns:230px minmax(0,1fr);grid-template-rows:minmax(0,1fr)}
+  body[data-shelf="v"] .shelf{border-right:1px solid var(--line);border-bottom:0;padding:0 0 24px}
+  body[data-shelf="v"] .shelf-item{border-bottom:1px solid var(--line);padding:12px 14px}
+  body[data-shelf="v"] .shelf{flex-direction:column;overflow-x:hidden;overflow-y:auto;padding:4px 10px 24px 16px;gap:6px}
+  body[data-shelf="v"] .shelf-item{width:auto;grid-template-columns:64px 1fr;gap:12px;padding:8px}
+  body[data-shelf="v"] .shelf-item.sel{box-shadow:inset 3px 0 0 var(--ink)}
+  body[data-shelf="v"] .album{padding:6px 24px 14px 14px}
+  body[data-shelf="v"] .album-art{grid-template-columns:200px 1fr}
+}
+/* phone landscape: controls on one row */
+@media (max-height: 500px){
+  .shelf{border-right:1px solid var(--line);border-bottom:0}
+  .shelf-item{border-bottom:1px solid var(--line)}
+  .top{padding:4px 16px 2px}
+  .home{height:36px}
+  .main{grid-template-columns:100px minmax(0,1fr);grid-template-rows:minmax(0,1fr)}
+  .shelf{flex-direction:column;overflow-x:hidden;overflow-y:auto;padding:2px 4px 8px 12px;gap:6px}
+  .shelf-item,.shelf-item.playing,.shelf-item:has(.si-eq){grid-template-columns:1fr;gap:4px;padding:5px 5px 6px;max-width:none;text-align:center}
+  .shelf-item .jk{width:48px;justify-self:center}
+  .si-title{font-size:.7rem;line-height:1.3;white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .si-eq{top:6px;right:8px}
+  .album{grid-template-columns:minmax(190px,34%) minmax(0,1fr);grid-template-rows:minmax(0,1fr);gap:0 18px;padding:0 16px 6px 6px}
+  .album-art{grid-template-columns:64px 1fr;align-content:start;overflow-y:auto}
+  .album-art .al-price{grid-column:1 / -1}
+  .tr-main{min-height:46px;padding:8px}
+  .pl-ctrl{flex-direction:row;align-items:center}
+  .transport{justify-content:flex-start;flex:none}
+  .hooks{flex:1;min-width:0}
+  .player{gap:8px;padding-top:8px}
+  .seek{height:40px}
+}
+
+/* ===== Apple-style skin ===== */
+body{background:#fff;-webkit-font-smoothing:antialiased;letter-spacing:.005em}
+.top{background:#fff;border-bottom:0;padding:18px 28px 10px}
+.circle{font-size:1.85rem;font-weight:700;letter-spacing:-.01em}
+.top-note{color:var(--muted);font-size:.85rem}
+.shelf{background:#fff;border-right:.5px solid var(--line);border-bottom:0;padding:4px 10px 24px;gap:2px}
+.shelf-item{border-bottom:0;border-radius:10px;padding:8px 10px;box-shadow:none}
+.shelf-item.sel{background:var(--fill2);box-shadow:none}
+.shelf-item .jk{border-radius:6px}
+.si-title{font-weight:600}
+.si-eq{top:10px;right:10px}
+.badge{border:0;border-radius:5px;font-weight:600;font-size:.72rem;padding:2px 6px}
+.b-new{background:var(--accent);color:#fff}
+.b-old{background:var(--fill2);color:#3c3c43}
+.b-soldout{background:#8e8e93;color:#fff}
+.jk{border-radius:8px;box-shadow:inset 0 0 0 .5px rgba(0,0,0,.08)}
+.jk img{border-radius:inherit}
+.album-art .jk{border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.14),0 0 0 .5px rgba(0,0,0,.06)}
+.album-art{padding:0 16px 28px;margin:0 -16px}
+.album{padding-top:14px}
+.al-title{font-weight:700;letter-spacing:-.01em}
+.al-sub{color:var(--accent);font-weight:500;font-size:1.05rem}
+.al-price{border-top:0;padding-top:6px}
+.price{font-weight:600;letter-spacing:-.01em}
+.tracklist ol{border-top:.5px solid var(--line)}
+.tr{border-bottom:.5px solid var(--line);border-radius:0}
+.tr.on{background:transparent}
+.tr-no{color:var(--muted);text-align:center}
+.tr.on .tr-title{font-weight:600}
+.pm{width:14px;height:14px;fill:var(--accent);vertical-align:middle}
+.tr-hook{border:0;border-radius:999px;background:var(--fill);color:var(--accent);height:34px;align-self:center;margin:0 6px 0 0;font-weight:600}
+.tr-hook:active{background:var(--accent);color:#fff}
+.player{background:rgba(255,255,255,.86);-webkit-backdrop-filter:saturate(180%) blur(20px);backdrop-filter:saturate(180%) blur(20px);border-top:.5px solid rgba(0,0,0,.14);gap:8px}
+.pl-title{font-weight:600}
+.seek{height:36px;background:transparent;border-radius:0;overflow:visible}
+.seek::before{content:"";position:absolute;left:0;right:0;top:50%;height:8px;margin-top:-4px;border-radius:4px;background:rgba(120,120,128,.2);transition:height .15s,margin .15s}
+.seek-fill{top:50%;bottom:auto;height:8px;margin-top:-4px;border-radius:4px;background:#1d1d1f;transition:height .15s,margin .15s}
+.seek.drag::before,.seek.drag .seek-fill{height:14px;margin-top:-7px;border-radius:7px}
+.seek.off::before{opacity:.6}
+.tick{top:50%;bottom:auto;height:16px;margin-top:-8px;width:3px;margin-left:-1.5px;border-radius:2px;background:var(--accent);mix-blend-mode:normal}
+.tick span{display:none}
+.seek-bubble{top:-14px;transform:translate(-50%,-100%);background:#1d1d1f;color:#fff;border:0;border-radius:8px;font-weight:600}
+.pl-times{display:flex;justify-content:space-between;font-size:.8rem;color:var(--muted);font-variant-numeric:tabular-nums;margin-top:-4px}
+.tbtn{border-radius:12px;color:#1d1d1f}
+.tbtn:active{background:var(--fill)}
+.tbtn svg{width:30px;height:30px}
+.tbtn.play{background:transparent;color:#1d1d1f;width:68px;height:68px;border-radius:50%}
+.tbtn.play:active{background:var(--fill)}
+.tbtn.play svg{width:42px;height:42px}
+.hook{border:0;border-radius:999px;background:var(--fill);height:44px;font-weight:600}
+.hook small{color:var(--muted)}
+.hook:active{background:var(--accent);color:#fff}
+.hook:active small{color:rgba(255,255,255,.8)}
+.attract{background:#fff}
+.at-circle{font-weight:700;letter-spacing:-.01em}
+.at-row .jk{border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.14)}
+.at-msg{color:var(--muted)}
+.admin{background:var(--fill)}
+.ad-bar{background:rgba(255,255,255,.9);border-bottom:.5px solid var(--line)}
+.fld input,.fld select,.ed-tr textarea,.ed-tr-top input{border:0;background:#fff;border-radius:10px}
+.btn{border-radius:10px;border:0;background:#fff;color:var(--accent)}
+.btn.primary{background:var(--accent);color:#fff}
+.btn.danger{color:#ff3b30}
+.ad-list li,.ed-tr{border:0;border-radius:12px;background:#fff}
+.toast{background:rgba(30,30,30,.86);color:#fff;border-radius:14px;-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px)}
+@media (max-width: 900px), (orientation: portrait){
+  .shelf{border-right:0;border-bottom:.5px solid var(--line);padding:4px 16px 10px;gap:8px}
+  .top{padding:14px 20px 8px}
+}
+@media (max-width: 700px), (max-height: 500px){
+  .circle{font-size:1.5rem}
+  .shelf-item{background:var(--fill)}
+  .shelf-item.sel{background:var(--fill2)}
+  .album-art .jk{border-radius:10px}
+  .tbtn svg{width:26px;height:26px}
+  .tbtn.play{width:58px;height:58px}
+  .tbtn.play svg{width:36px;height:36px}
+  .hook{height:40px}
+}
+@media (max-width: 700px){
+  body[data-shelf="v"] .shelf{border-right:.5px solid var(--line);border-bottom:0;padding:2px 6px 10px 8px}
+  body[data-shelf="v"] .shelf-item{background:transparent}
+  body[data-shelf="v"] .shelf-item.sel{background:var(--fill2)}
+}
+@media (min-width: 701px) and (min-height: 501px) and (max-width: 900px), (min-width: 701px) and (min-height: 501px) and (orientation: portrait){
+  body[data-shelf="v"] .shelf{border-right:.5px solid var(--line);border-bottom:0;padding:4px 10px 24px}
+  body[data-shelf="v"] .shelf-item.sel{box-shadow:none;background:var(--fill2)}
+}
+@media (max-height: 500px){
+  .shelf{border-right:.5px solid var(--line);border-bottom:0;padding:2px 6px 8px 10px}
+  .shelf-item{background:transparent}
+  .top{padding:6px 16px 2px}
+  .circle{font-size:1.2rem}
+}
+.ad-list li.off .jk,.ad-list li.off b,.ad-list li.off small{opacity:.4}
+.sw{display:flex;align-items:center;gap:8px;font-size:.85rem;font-weight:600;margin-bottom:6px;cursor:pointer}
+.sw input{appearance:none;-webkit-appearance:none;width:44px;height:26px;border-radius:13px;background:#d1d1d6;position:relative;margin:0;flex:none;transition:background .2s}
+.sw input::after{content:"";position:absolute;top:2px;left:2px;width:22px;height:22px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:transform .2s}
+.sw input:checked{background:#34c759}
+.sw input:checked::after{transform:translateX(18px)}
+@media (prefers-reduced-motion:reduce){ *{transition:none!important} }
+</style>
+</head>
+<body>
+<div class="app" id="app">
+  <header class="top">
+    <div class="circle" id="circle" aria-label="サークル名（2秒長押しで管理画面）"></div>
+    <div class="top-note">ヘッドホンで試聴できます</div>
+  </header>
+  <div class="main">
+    <nav class="shelf" id="shelf" aria-label="アルバム"></nav>
+    <div class="album" id="album"></div>
+  </div>
+  <div class="player" id="player">
+        <div class="pl-top">
+          <button class="pl-now" id="plNow" aria-label="再生中のアルバムを表示"><span class="pl-title" id="plTitle">曲を選ぶと再生が始まります</span><span class="pl-album" id="plAlbum"></span></button>
+        </div>
+        <div class="seek off" id="seek" role="slider" aria-label="再生位置" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" tabindex="0">
+          <div class="seek-fill" id="seekFill"></div>
+          <div id="ticks"></div>
+          <div class="seek-knob" id="seekKnob"></div>
+          <div class="seek-bubble" id="seekBubble">0:00</div>
+        </div>
+        <div class="pl-times"><span id="tCur">0:00</span><span id="tDur">-0:00</span></div>
+        <div class="pl-ctrl">
+          <div class="transport">
+            <button class="tbtn" id="bPrev" aria-label="前の曲"><svg viewBox="0 0 24 24"><path d="M11 6.5v11L3 12zM21 6.5v11L13 12z"/></svg></button>
+            <button class="tbtn" id="bBack" aria-label="10秒戻る"><svg viewBox="0 0 24 24"><path d="M12 4.5V2L8 5.5 12 9V6.5a6.5 6.5 0 1 1-6.5 6.5h-2A8.5 8.5 0 1 0 12 4.5z"/><text x="12.3" y="16.2" text-anchor="middle" font-size="6.6" font-weight="700" font-family="-apple-system,Helvetica,sans-serif">10</text></svg></button>
+            <button class="tbtn play" id="bPlay" aria-label="再生"><svg viewBox="0 0 24 24" id="playIcon"><path d="M7 4v16l13-8z"/></svg></button>
+            <button class="tbtn" id="bFwd" aria-label="10秒進む"><svg viewBox="0 0 24 24"><path d="M12 4.5V2l4 3.5L12 9V6.5A6.5 6.5 0 1 0 18.5 13h2A8.5 8.5 0 1 1 12 4.5z"/><text x="11.7" y="16.2" text-anchor="middle" font-size="6.6" font-weight="700" font-family="-apple-system,Helvetica,sans-serif">10</text></svg></button>
+            <button class="tbtn" id="bNext" aria-label="次の曲"><svg viewBox="0 0 24 24"><path d="M13 6.5v11l8-5.5zM3 6.5v11l8-5.5z"/></svg></button>
+          </div>
+          <div class="hooks" id="hooks"></div>
+        </div>
+  </div>
+</div>
+
+<div class="attract" id="attract" hidden>
+  <p class="at-circle" id="atCircle"></p>
+  <div class="at-row" id="atRow"></div>
+  <div class="at-msg">画面に触れると試聴できます</div>
+</div>
+
+<div class="admin" id="admin" hidden>
+  <div class="ad-bar">
+    <h2>管理画面</h2>
+    <div><button class="btn" data-act="cancel">変更を破棄</button><button class="btn primary" data-act="save">保存して閉じる</button></div>
+  </div>
+  <div class="ad-body"><div class="ad-inner" id="adminBody"></div></div>
+</div>
+
+<div class="toast" id="toast" role="status"></div>
+<audio id="audio" preload="auto" playsinline></audio>
+
+<script>
+(() => {
+const $ = s => document.querySelector(s);
+const audio = $('#audio');
+const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
+const fmt = t => { if (!isFinite(t) || t < 0) t = 0; const m = Math.floor(t / 60), s = Math.floor(t % 60); return m + ':' + String(s).padStart(2, '0'); };
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const yen = p => '¥' + Number(p || 0).toLocaleString('ja-JP');
+const STATUS = { new: '新刊', old: '既刊', soldout: '完売' };
+
+/* ---------- storage (IndexedDB) ---------- */
+let dbp = null, storageOK = true;
+const withTimeout = (pr, ms) => Promise.race([pr, new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), ms))]);
+function openDB() {
+  return withTimeout(new Promise((res, rej) => {
+    if (!window.indexedDB) { rej(new Error('no indexedDB')); return; }
+    const r = indexedDB.open('shichouki', 1);
+    r.onblocked = () => rej(new Error('blocked'));
+    r.onupgradeneeded = () => { const db = r.result; db.createObjectStore('kv'); db.createObjectStore('blobs'); };
+    r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
+  }), 4000);
+}
+async function idb(store, mode, fn) {
+  if (!storageOK) throw new Error('storage unavailable');
+  if (!dbp) dbp = openDB();
+  let db;
+  try { db = await dbp; } catch (e) { storageOK = false; throw e; }
+  return new Promise((res, rej) => {
+    const tx = db.transaction(store, mode); const req = fn(tx.objectStore(store));
+    tx.oncomplete = () => res(req && req.result); tx.onerror = () => rej(tx.error); tx.onabort = () => rej(tx.error);
+  });
+}
+const kvGet = k => idb('kv', 'readonly', s => s.get(k));
+async function saveConfig() {
+  try { await idb('kv', 'readwrite', s => s.put(JSON.parse(JSON.stringify(config)), 'config')); }
+  catch (e) { storageOK = false; toast('設定を保存できませんでした'); }
+}
+const urlCache = new Map();
+async function putBlob(key, blob) { await idb('blobs', 'readwrite', s => s.put(blob, key)); urlCache.set(key, URL.createObjectURL(blob)); }
+async function blobURL(key) {
+  if (urlCache.has(key)) return urlCache.get(key);
+  try { const b = await idb('blobs', 'readonly', s => s.get(key)); if (!b) return null; const u = URL.createObjectURL(b); urlCache.set(key, u); return u; }
+  catch (e) { return null; }
+}
+async function gcBlobs() {
+  try {
+    const refs = new Set();
+    config.albums.forEach(a => { if (a.jacketKey) refs.add(a.jacketKey); a.tracks.forEach(t => t.audioKey && refs.add(t.audioKey)); });
+    const keys = await idb('blobs', 'readonly', s => s.getAllKeys());
+    const dead = (keys || []).filter(k => !refs.has(k));
+    if (dead.length) await idb('blobs', 'readwrite', s => { dead.forEach(k => s.delete(k)); return null; });
+    dead.forEach(k => { const u = urlCache.get(k); if (u) { URL.revokeObjectURL(u); urlCache.delete(k); } });
+  } catch (e) {}
+}
+
+/* ---------- demo audio ---------- */
+function mulberry(a) { return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+const m2f = m => 440 * Math.pow(2, (m - 69) / 12);
+function tone(buf, sr, t0, len, f, amp, shape) {
+  const s0 = Math.floor(t0 * sr), n = Math.floor(len * sr), w = 2 * Math.PI * f / sr;
+  for (let i = 0; i < n && s0 + i < buf.length; i++) {
+    const env = Math.min(1, i / (sr * 0.008)) * Math.exp(-3.2 * i / n), ph = w * i;
+    const v = shape === 'tri' ? 0.6366 * Math.asin(Math.sin(ph)) : Math.sin(ph) + 0.3 * Math.sin(2 * ph);
+    buf[s0 + i] += v * amp * env;
+  }
+}
+function synthTrack(seed, dur, markers) {
+  const sr = 22050, n = Math.floor(sr * dur), buf = new Float32Array(n), r = mulberry(seed * 9973 + 7);
+  const bpm = 92 + Math.floor(r() * 44), beat = 60 / bpm, step = beat / 2, root = 55 + Math.floor(r() * 7);
+  const progs = [[0,9,5,7],[0,5,9,7],[9,5,0,7],[5,7,9,0]], prog = progs[Math.floor(r() * 4)];
+  const pats = [[0,1,2,1,0,2,1,2],[0,2,1,2,0,2,1,2],[2,1,0,1,2,1,0,1]], pat = pats[Math.floor(r() * 3)];
+  const hooks = markers.map(m => m.t), hot = t => hooks.some(s => t >= s && t < s + 12);
+  const steps = Math.floor((dur - 1) / step);
+  for (let i = 0; i < steps; i++) {
+    const t = i * step, deg = prog[Math.floor(i / 8) % 4], tri = deg === 9 ? [0,3,7] : [0,4,7], h = hot(t);
+    tone(buf, sr, t, step * 1.8, m2f(root + deg + tri[pat[i % 8]] + (h ? 12 : 0)), h ? 0.2 : 0.14, 'tri');
+    if (i % 4 === 0) tone(buf, sr, t, beat * 2.2, m2f(root - 24 + deg), 0.3, 'sine');
+    if (h && i % 8 === 0) for (const q of tri) tone(buf, sr, t, beat * 4, m2f(root + deg + q), 0.07, 'sine');
+  }
+  const fi = sr * 0.3, fo = sr * 1.5;
+  for (let i = 0; i < fi; i++) buf[i] *= i / fi;
+  for (let i = 0; i < fo; i++) buf[n - 1 - i] *= i / fo;
+  let pk = 0; for (let i = 0; i < n; i++) pk = Math.max(pk, Math.abs(buf[i]));
+  const g = pk ? 0.85 / pk : 1, ab = new ArrayBuffer(44 + n * 2), dv = new DataView(ab);
+  const ws = (o, s) => { for (let i = 0; i < s.length; i++) dv.setUint8(o + i, s.charCodeAt(i)); };
+  ws(0,'RIFF'); dv.setUint32(4, 36 + n * 2, true); ws(8,'WAVE'); ws(12,'fmt ');
+  dv.setUint32(16,16,true); dv.setUint16(20,1,true); dv.setUint16(22,1,true); dv.setUint32(24,sr,true);
+  dv.setUint32(28,sr*2,true); dv.setUint16(32,2,true); dv.setUint16(34,16,true); ws(36,'data'); dv.setUint32(40,n*2,true);
+  for (let i = 0; i < n; i++) dv.setInt16(44 + i * 2, Math.max(-1, Math.min(1, buf[i] * g)) * 32767, true);
+  return new Blob([ab], { type: 'audio/wav' });
+}
+
+function demoConfig() {
+  let seed = 1;
+  const mk = (title, subtitle, price, status, color, tracks) => ({
+    id: uid(), title, subtitle, price, status, color, jacketKey: null,
+    tracks: tracks.map(([t, mk]) => ({ id: uid(), title: t, audioKey: null, fileName: '', demo: { seed: seed++, dur: 48 }, markers: mk }))
+  });
+  const S = (a, b) => [{ t: a, label: 'サビ' }].concat(b ? [{ t: b, label: 'ラスサビ' }] : []);
+  return {
+    circle: 'サークル名', baseColor: '#6b5ce7', phoneShelf: 'h', idleSec: 60, playIdleSec: 180, startAtMarker: false,
+    albums: [
+      mk('月影のアトリエ', '2026 秋 新譜', 1000, 'new', '#3d4a5c', [['月影のアトリエ', S(16, 32)], ['ガラスペンの夜', S(12)], ['午前二時の絵具', S(20, 34)], ['アトリエの窓 (inst.)', []]]),
+      mk('夏至のシグナル', '2026 夏', 1000, 'old', '#a8743a', [['夏至のシグナル', S(14, 30)], ['遠雷とラムネ', S(18)], ['灯台まで', S(16, 32)]]),
+      mk('硝子の街の歌', '2025 冬', 500, 'old', '#4f6f63', [['硝子の街', S(12, 28)], ['ひかりの粒', S(20)], ['終電の窓', S(16)]]),
+      mk('はじまりの軌跡', '2025 春 1st', 500, 'soldout', '#8a4a4a', [['はじまりの軌跡', S(16, 32)], ['春風の手紙', S(14)]])
+    ]
+  };
+}
+
+/* ---------- state ---------- */
+let config = null, selId = null, cur = null, pendingSeek = null, dragging = false, view = 'list';
+const phoneMQ = matchMedia('(max-width: 700px), (max-height: 500px)');
+const isPhone = () => phoneMQ.matches;
+function setView(v, push) {
+  view = v; document.body.dataset.view = v;
+  if (push && v === 'album') { try { history.pushState({ v: 'album' }, ''); } catch (e) {} }
+  if (v === 'album') { const tl = $('#album .tracklist'); if (tl) tl.scrollTop = 0; }
+}
+function goList() {
+  if (history.state && history.state.v === 'album') { try { history.back(); return; } catch (e) {} }
+  setView('list');
+}
+addEventListener('popstate', () => { if (view === 'album') setView('list'); });
+function openAlbum(id) {
+  selId = id; renderShelf(); renderAlbum(); prepareAlbum(selId);
+  const tl = $('#album .tracklist'); if (tl) tl.scrollTop = 0;
+  const chip = document.querySelector(`.shelf-item[data-aid="${id}"]`);
+  if (chip && isPhone()) chip.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'smooth' });
+}
+(() => {
+  let sx = 0, sy = 0, on = false;
+  const el = $('#album');
+  el.addEventListener('touchstart', e => { const t = e.touches[0]; sx = t.clientX; sy = t.clientY; on = e.touches.length === 1; }, { passive: true });
+  el.addEventListener('touchend', e => {
+    if (!on || !isPhone()) return; on = false;
+    const t = e.changedTouches[0], dx = t.clientX - sx, dy = t.clientY - sy;
+    if (Math.abs(dx) < 70 || Math.abs(dy) > Math.abs(dx) * 0.6) return;
+    const list = shown(), i = list.findIndex(a => a.id === selId), j = i + (dx < 0 ? 1 : -1);
+    if (j >= 0 && j < list.length) openAlbum(list[j].id);
+  }, { passive: true });
+})();
+const albumById = id => config.albums.find(a => a.id === id);
+const shown = () => config.albums.filter(a => !a.hidden);
+const curTrack = () => { if (!cur) return null; const a = albumById(cur.albumId); return a && a.tracks.find(t => t.id === cur.trackId); };
+const cacheKeyOf = t => t.audioKey || ('demo:' + t.id);
+
+async function urlFor(t) {
+  const k = cacheKeyOf(t);
+  if (urlCache.has(k)) return urlCache.get(k);
+  if (t.audioKey) return blobURL(t.audioKey);
+  if (t.demo) { const u = URL.createObjectURL(synthTrack(t.demo.seed, t.demo.dur, t.markers || [])); urlCache.set(k, u); return u; }
+  return null;
+}
+async function prepareAlbum(id) {
+  const a = albumById(id); if (!a) return;
+  for (const t of a.tracks) { if (!urlCache.has(cacheKeyOf(t))) { await urlFor(t); await new Promise(r => setTimeout(r, 0)); } }
+}
+
+/* ---------- rendering ---------- */
+function badge(a) { return a.status && STATUS[a.status] ? `<span class="badge b-${a.status}">${STATUS[a.status]}</span>` : ''; }
+function jacketHTML(a) {
+  const u = a.jacketKey && urlCache.get(a.jacketKey);
+  return `<div class="jk" style="--c:${esc(a.color)}">${u ? `<img src="${u}" alt="">` : `<div class="jk-demo"><span>${esc(a.title)}</span></div>`}</div>`;
+}
+const eqHTML = '<svg class="pm" viewBox="0 0 14 14" aria-label="再生中"><rect x="1" y="5" width="2.6" height="8" rx="1.2"/><rect x="5.7" y="1.5" width="2.6" height="11.5" rx="1.2"/><rect x="10.4" y="7" width="2.6" height="6" rx="1.2"/></svg>';
+
+function setAccent() {}
+function renderShelf() {
+  const sh = $('#shelf');
+  if (!shown().length) { sh.innerHTML = ''; return; }
+  sh.innerHTML = shown().map(a => {
+    const isCur = cur && cur.albumId === a.id;
+    return `<button class="shelf-item ${a.id === selId ? 'sel' : ''} ${isCur && !audio.paused ? 'playing' : ''}" data-aid="${a.id}" style="--c:${esc(a.color)}">
+      ${jacketHTML(a)}
+      <span class="si-text"><span class="si-title">${esc(a.title)}</span>
+      <span class="si-meta">${badge(a)}<span class="${a.status === 'soldout' ? 'so' : ''}">${yen(a.price)}</span></span></span>
+      ${isCur ? `<span class="si-eq">${eqHTML}</span>` : ''}</button>`;
+  }).join('');
+}
+function renderAlbum() {
+  const el = $('#album'), a = albumById(selId);
+  if (!a && config.albums.length) { el.innerHTML = `<p class="empty">表示するアルバムがありません。<br>サークル名を2秒長押しして、管理画面で「今回出す」をオンにしてください。</p>`; return; }
+  if (!a) { el.innerHTML = `<p class="empty">アルバムがまだ登録されていません。<br>サークル名を2秒長押しして管理画面から追加してください。</p>`; return; }
+  const scroll = el.querySelector('.tracklist')?.scrollTop || 0;
+  el.innerHTML = `
+    <button class="back" data-back aria-label="アルバム一覧に戻る"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15.5 4 7.5 12l8 8 1.8-1.8L11.1 12l6.2-6.2z"/></svg>アルバム一覧</button>
+    <div class="album-art">
+      ${jacketHTML(a)}
+      <h2 class="al-title">${esc(a.title)}</h2>
+      ${a.subtitle ? `<p class="al-sub">${esc(a.subtitle)}</p>` : ''}
+      <div class="al-price"><span class="price-label">頒布価格</span><span class="price ${a.status === 'soldout' ? 'so' : ''}">${yen(a.price)}</span>${badge(a)}</div>
+    </div>
+    <div class="tracklist">
+      ${a.tracks.length ? `<ol>${a.tracks.map((t, i) => {
+        const on = cur && cur.trackId === t.id;
+        const hk = t.markers && t.markers[0];
+        return `<li class="tr ${on ? 'on' : ''} ${on && !audio.paused ? 'playing' : ''}">
+          <button class="tr-main" data-play="${t.id}"><span class="tr-no">${on ? eqHTML : String(i + 1).padStart(2, '0')}</span><span class="tr-title">${esc(t.title)}</span></button>
+          ${hk ? `<button class="tr-hook" data-hook="${t.id}">${esc(hk.label)}から</button>` : ''}
+        </li>`; }).join('')}</ol>` : '<p class="empty">収録曲が登録されていません。</p>'}
+    </div>`;
+  el.style.setProperty('--c', a.color);
+  const tl = el.querySelector('.tracklist'); if (tl) tl.scrollTop = scroll;
+}
+function renderPlayer() {
+  const t = curTrack(), a = cur && albumById(cur.albumId);
+  $('#plTitle').textContent = t ? t.title : '曲を選ぶと再生が始まります';
+  $('#plAlbum').textContent = t && a ? a.title : '';
+  $('#seek').classList.toggle('off', !t);
+  ['#bPrev', '#bBack', '#bPlay', '#bFwd', '#bNext'].forEach(s => $(s).disabled = !t);
+  const d = audio.duration;
+  $('#ticks').innerHTML = t && isFinite(d) && d > 0 ? (t.markers || []).filter(m => m.t < d).map(m =>
+    `<div class="tick" style="left:${m.t / d * 100}%"><span>${esc(m.label)}</span></div>`).join('') : '';
+  $('#hooks').innerHTML = t ? (t.markers || []).map((m, i) =>
+    `<button class="hook" data-mk="${i}">${esc(m.label)}<small>${fmt(m.t)}</small></button>`).join('') : '';
+  updatePlayIcon(); drawProgress();
+}
+function updatePlayIcon() {
+  const playing = !audio.paused;
+  $('#playIcon').innerHTML = playing ? '<path d="M6 4h4v16H6zM14 4h4v16h-4z"/>' : '<path d="M7 4v16l13-8z"/>';
+  $('#bPlay').setAttribute('aria-label', playing ? '一時停止' : '再生');
+}
+function drawProgress() {
+  const d = audio.duration, c = audio.currentTime, p = curTrack() && isFinite(d) && d > 0 ? c / d : 0;
+  $('#seekFill').style.width = (p * 100) + '%';
+  $('#seekKnob').style.left = (p * 100) + '%';
+  $('#tCur').textContent = fmt(curTrack() ? c : 0);
+  $('#tDur').textContent = '-' + fmt(curTrack() ? Math.max(0, d - c) : 0);
+  $('#seek').setAttribute('aria-valuenow', Math.round(p * 100));
+  if (dragging) { const b = $('#seekBubble'); b.textContent = fmt(c); b.style.left = Math.min(92, Math.max(8, p * 100)) + '%'; }
+}
+function renderAll() {
+  $('#circle').textContent = config.circle;
+  document.body.dataset.shelf = config.phoneShelf || 'h';
+  document.title = config.circle + ' 試聴機';
+  setAccent(); renderShelf(); renderAlbum(); renderPlayer();
+}
+function refreshPlayingMarks() { renderShelf(); renderAlbum(); updatePlayIcon(); }
+
+/* ---------- playback ---------- */
+async function playTrack(aid, tid, startAt) {
+  const a = albumById(aid), t = a && a.tracks.find(x => x.id === tid); if (!t) return;
+  let url = urlCache.get(cacheKeyOf(t));
+  if (!url) url = await urlFor(t);
+  if (!url) { toast('この曲には音源が登録されていません'); return; }
+  if (startAt == null && config.startAtMarker && t.markers && t.markers.length) startAt = t.markers[0].t;
+  const same = cur && cur.trackId === tid && audio.src === url;
+  cur = { albumId: aid, trackId: tid };
+  setAccent();
+  if (same && isFinite(audio.duration)) audio.currentTime = startAt || 0;
+  else { pendingSeek = startAt || 0; audio.src = url; }
+  audio.play().catch(() => {});
+  renderAlbum(); renderShelf(); renderPlayer();
+}
+function stopAll() {
+  audio.pause(); cur = null; pendingSeek = null; audio.removeAttribute('src'); audio.load();
+}
+function stepTrack(dir) {
+  const a = cur && albumById(cur.albumId); if (!a) return;
+  if (dir < 0 && audio.currentTime > 3) { audio.currentTime = 0; return; }
+  const i = a.tracks.findIndex(t => t.id === cur.trackId), j = i + dir;
+  if (j >= 0 && j < a.tracks.length) playTrack(a.id, a.tracks[j].id, null);
+}
+audio.addEventListener('loadedmetadata', () => { if (pendingSeek) { try { audio.currentTime = Math.min(pendingSeek, audio.duration - 0.5); } catch (e) {} } pendingSeek = null; renderPlayer(); });
+audio.addEventListener('play', () => { refreshPlayingMarks(); loop(); });
+audio.addEventListener('pause', refreshPlayingMarks);
+audio.addEventListener('ended', refreshPlayingMarks);
+audio.addEventListener('timeupdate', drawProgress);
+audio.addEventListener('error', () => { if (cur) toast('この音源は再生できない形式です（m4a / mp3 を推奨）'); });
+function loop() { drawProgress(); if (!audio.paused) requestAnimationFrame(loop); }
+
+/* seek bar */
+const seek = $('#seek');
+function seekTo(e) {
+  const r = seek.getBoundingClientRect(), p = Math.min(1, Math.max(0, (e.clientX - r.left) / r.width));
+  if (isFinite(audio.duration)) audio.currentTime = p * audio.duration;
+  drawProgress();
+}
+seek.addEventListener('pointerdown', e => { if (!curTrack() || !isFinite(audio.duration)) return; dragging = true; seek.classList.add('drag'); seek.setPointerCapture(e.pointerId); seekTo(e); });
+seek.addEventListener('pointermove', e => { if (dragging) seekTo(e); });
+const endDrag = () => { dragging = false; seek.classList.remove('drag'); };
+seek.addEventListener('pointerup', endDrag); seek.addEventListener('pointercancel', endDrag);
+seek.addEventListener('keydown', e => { if (!curTrack()) return; if (e.key === 'ArrowRight') audio.currentTime += 5; if (e.key === 'ArrowLeft') audio.currentTime -= 5; });
+
+$('#bPlay').onclick = () => { if (!curTrack()) return; audio.paused ? audio.play().catch(() => {}) : audio.pause(); };
+$('#bBack').onclick = () => { audio.currentTime = Math.max(0, audio.currentTime - 10); };
+$('#bFwd').onclick = () => { if (isFinite(audio.duration)) audio.currentTime = Math.min(audio.duration - 0.2, audio.currentTime + 10); };
+$('#bPrev').onclick = () => stepTrack(-1);
+$('#bNext').onclick = () => stepTrack(1);
+$('#hooks').addEventListener('click', e => {
+  const b = e.target.closest('[data-mk]'); const t = curTrack(); if (!b || !t) return;
+  audio.currentTime = t.markers[+b.dataset.mk].t; if (audio.paused) audio.play().catch(() => {});
+});
+$('#shelf').addEventListener('click', e => {
+  const b = e.target.closest('[data-aid]'); if (!b) return;
+  openAlbum(b.dataset.aid);
+});
+$('#plNow').addEventListener('click', () => { if (cur) openAlbum(cur.albumId); });
+$('#album').addEventListener('click', e => {
+  if (e.target.closest('[data-back]')) { goList(); return; }
+  const p = e.target.closest('[data-play]'), h = e.target.closest('[data-hook]');
+  if (p) playTrack(selId, p.dataset.play, null);
+  else if (h) { const t = albumById(selId).tracks.find(x => x.id === h.dataset.hook); playTrack(selId, t.id, t.markers[0].t); }
+});
+
+/* ---------- idle / attract ---------- */
+let lastActive = Date.now(), attractOn = false, adminOpen = false;
+['pointerdown', 'keydown'].forEach(ev => addEventListener(ev, () => { lastActive = Date.now(); }, { capture: true }));
+setInterval(() => {
+  if (adminOpen || attractOn || !config) return;
+  const limit = audio.paused ? config.idleSec : config.playIdleSec;
+  if (limit > 0 && Date.now() - lastActive > limit * 1000) showAttract();
+}, 1000);
+function showAttract() {
+  stopAll(); selId = shown()[0] && shown()[0].id; renderAll();
+  if (view === 'album') { if (history.state && history.state.v === 'album') { try { history.back(); } catch (e) {} } setView('list'); }
+  $('#atCircle').textContent = config.circle;
+  $('#atRow').innerHTML = shown().slice(0, 6).map(a =>
+    `<div class="at-item">${jacketHTML(a)}<div class="at-cap">${badge(a)}<span>${yen(a.price)}</span></div></div>`).join('');
+  $('#attract').hidden = false; attractOn = true;
+}
+$('#attract').addEventListener('click', () => { $('#attract').hidden = true; attractOn = false; lastActive = Date.now(); });
+
+/* ---------- keep screen awake ---------- */
+let wl = null;
+async function keepAwake() { try { if ('wakeLock' in navigator && !wl) { wl = await navigator.wakeLock.request('screen'); wl.addEventListener('release', () => { wl = null; }); } } catch (e) {} }
+addEventListener('pointerdown', keepAwake);
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') keepAwake(); });
+
+/* ---------- admin (long press on circle name) ---------- */
+let lpTimer = null, draft = null, editAid = null;
+const circleEl = $('#circle');
+circleEl.addEventListener('pointerdown', () => { clearTimeout(lpTimer); lpTimer = setTimeout(openAdmin, 2000); });
+['pointerup', 'pointerleave', 'pointercancel'].forEach(ev => circleEl.addEventListener(ev, () => clearTimeout(lpTimer)));
+
+function openAdmin() {
+  draft = JSON.parse(JSON.stringify(config)); editAid = null; adminOpen = true;
+  $('#admin').hidden = false; renderAdmin();
+}
+async function closeAdmin(save) {
+  if (save) {
+    draft.albums.forEach(a => a.tracks.forEach(t => delete t._mt));
+    config = draft; await saveConfig();
+    if (!shown().some(a => a.id === selId)) selId = shown()[0] && shown()[0].id;
+    if (cur && (!curTrack() || albumById(cur.albumId).hidden)) stopAll();
+    // demo audio follows markers, so regenerate if markers changed
+    config.albums.forEach(a => a.tracks.forEach(t => { if (t.demo) { const k = cacheKeyOf(t); const u = urlCache.get(k); if (u && !(cur && cur.trackId === t.id)) { URL.revokeObjectURL(u); urlCache.delete(k); } } }));
+    toast('保存しました');
+  }
+  draft = null; editAid = null; adminOpen = false; $('#admin').hidden = true;
+  await gcBlobs(); renderAll(); prepareAlbum(selId); lastActive = Date.now();
+}
+const draftAlbum = () => draft.albums.find(a => a.id === editAid);
+function markersToText(ms) { return (ms || []).map(m => fmt(m.t) + ' ' + m.label).join('\n'); }
+function parseMarkers(text) {
+  return text.split(/\n/).map(l => l.replace(/[０-９]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFEE0)).replace(/：/g, ':').trim()).filter(Boolean).map(l => {
+    const m = l.match(/^(\d+)(?::(\d{1,2}))?\s*(.*)$/); if (!m) return null;
+    return { t: m[2] != null ? (+m[1]) * 60 + (+m[2]) : +m[1], label: m[3].trim() || '聴きどころ' };
+  }).filter(Boolean).sort((a, b) => a.t - b.t);
+}
+const isAudio = f => /^audio\//.test(f.type) || /\.(mp3|m4a|aac|wav|aif|aiff|caf|mp4)$/i.test(f.name);
+const titleFromName = n => n.replace(/\.[^.]+$/, '').replace(/^\s*\d{1,3}[\s._\-]+/, '').trim() || n;
+
+function renderAdmin() {
+  const body = $('#adminBody');
+  if (editAid) {
+    const a = draftAlbum();
+    body.innerHTML = `
+      <div><button class="btn" data-act="back">アルバム一覧へ戻る</button></div>
+      <section class="ad-sec"><h3>アルバム情報</h3>
+        <div class="ed-head">
+          <div class="ed-jk"><div id="edJk">${jacketHTML(a)}</div>
+            <label class="btn">ジャケット画像を選ぶ<input class="vh" type="file" accept="image/*" data-file="jacket"></label></div>
+          <div>
+            <label class="fld"><span>タイトル</span><input data-f="a.title" value="${esc(a.title)}"></label>
+            <label class="fld"><span>サブタイトル（発行イベントなど）</span><input data-f="a.subtitle" value="${esc(a.subtitle)}"></label>
+            <label class="fld"><span>頒布価格（円）</span><input type="number" inputmode="numeric" min="0" step="100" data-f="a.price" value="${a.price}"></label>
+            <label class="chk"><input type="checkbox" data-f="a.show" ${a.hidden ? '' : 'checked'}><span>今回のイベントで試聴機に出す</span></label>
+            <label class="fld"><span>新刊・既刊の表示</span><select data-f="a.status">
+              ${[['new','新刊'],['old','既刊'],['soldout','完売'],['','なし']].map(([v,l]) => `<option value="${v}" ${a.status === v ? 'selected' : ''}>${l}</option>`).join('')}
+            </select></label>
+            <label class="fld"><span>仮ジャケットの色（画像がないときに表示）</span><input type="color" data-f="a.color" value="${esc(a.color)}"></label>
+          </div>
+        </div>
+      </section>
+      <section class="ad-sec"><h3>収録曲</h3>
+        <p class="hint">聴きどころは「1:05 サビ」のように1行に1つずつ書きます。試聴画面にジャンプボタンとして表示されます。</p>
+        <ol class="ed-tracks">${a.tracks.map((t, i) => `
+          <li class="ed-tr">
+            <div class="ed-tr-top"><span class="no">${i + 1}</span><input data-f="t.title" data-ti="${i}" value="${esc(t.title)}" aria-label="曲名">
+              <div class="row-btns"><button class="btn small" data-act="tup" data-ti="${i}" aria-label="上へ">↑</button><button class="btn small" data-act="tdown" data-ti="${i}" aria-label="下へ">↓</button><button class="btn small danger" data-act="tdel" data-ti="${i}">削除</button></div></div>
+            <div class="ed-tr-sub"><span>${t.audioKey ? '音源：' + esc(t.fileName || '登録済み') : t.demo ? '音源：デモ音（仮）' : '音源が未登録です'}</span>
+              <label class="btn small">${t.audioKey ? '音源を差し替える' : '音源を選ぶ'}<input class="vh" type="file" data-file="track" data-ti="${i}"></label></div>
+            <textarea data-f="t.markers" data-ti="${i}" rows="2" placeholder="0:45 サビ&#10;2:10 ラスサビ" aria-label="聴きどころ">${esc(t._mt ?? markersToText(t.markers))}</textarea>
+          </li>`).join('')}</ol>
+        <label class="btn primary">曲を追加（音声ファイルを複数選べます）<input class="vh" type="file" multiple data-file="addtracks"></label>
+      </section>`;
+  } else {
+    body.innerHTML = `
+      <section class="ad-sec"><h3>基本設定</h3>
+        <label class="fld"><span>サークル名</span><input data-f="circle" value="${esc(draft.circle)}"></label>
+        <label class="fld"><span>縦向き画面でのアルバムの並べ方（iPhone・iPad共通）</span><select data-f="phoneShelf">
+          <option value="h" ${draft.phoneShelf !== 'v' ? 'selected' : ''}>上部に横一列（題名つき）</option>
+          <option value="v" ${draft.phoneShelf === 'v' ? 'selected' : ''}>左端に縦一列（ジャケットと題名）</option>
+        </select></label>
+        <label class="fld"><span>停止中、操作がないとき待機画面に戻るまでの秒数（0で無効）</span><input type="number" inputmode="numeric" min="0" data-f="idleSec" value="${draft.idleSec}"></label>
+        <label class="fld"><span>再生中、最後の操作から待機画面に戻るまでの秒数（0で無効）</span><input type="number" inputmode="numeric" min="0" data-f="playIdleSec" value="${draft.playIdleSec}"></label>
+        <label class="chk"><input type="checkbox" data-f="startAtMarker" ${draft.startAtMarker ? 'checked' : ''}><span>曲を選んだら最初の聴きどころから再生する</span></label>
+      </section>
+      <section class="ad-sec"><h3>アルバム</h3>
+        <p class="hint">上にあるものほど棚の上に表示されます。「今回出す」をオフにすると、設定や音源は残したまま、試聴機には表示しません。</p>
+        <ul class="ad-list">${draft.albums.map((a, i) => `
+          <li class="${a.hidden ? 'off' : ''}">${jacketHTML(a)}
+            <div><label class="sw"><input type="checkbox" data-act="show" data-ai="${i}" ${a.hidden ? '' : 'checked'}><span>今回出す</span></label><b>${esc(a.title)}</b><small>${a.status ? STATUS[a.status] + '　' : ''}${yen(a.price)}　${a.tracks.length}曲</small></div>
+            <div class="row-btns"><button class="btn small" data-act="up" data-ai="${i}" aria-label="上へ">↑</button><button class="btn small" data-act="down" data-ai="${i}" aria-label="下へ">↓</button><button class="btn small" data-act="edit" data-ai="${i}">編集</button><button class="btn small danger" data-act="del" data-ai="${i}">削除</button></div>
+          </li>`).join('')}</ul>
+        <button class="btn primary" data-act="addAlbum">アルバムを追加</button>
+      </section>
+      <section class="ad-sec"><h3>データ</h3>
+        <p class="hint">${location.protocol.startsWith('http') ? (navigator.serviceWorker && navigator.serviceWorker.controller ? 'オフライン対応：準備できています（ネットがなくても起動できます）' : 'オフライン対応：準備中です。一度アプリを閉じて開き直してください') : 'オフライン対応：Webサイトとして公開したときに有効になります'}${storageOK ? '' : '<br>この画面ではデータを保存できません。Safariで開き直してください'}</p>
+        <p class="hint" id="usage">使用容量を確認しています…</p>
+        <button class="btn danger" data-act="reset">すべて削除してデモに戻す</button>
+      </section>`;
+    if (navigator.storage && navigator.storage.estimate) navigator.storage.estimate().then(({ usage, quota }) => {
+      const u = $('#usage'); if (u) u.textContent = `このiPadに保存中のデータ：約${(usage / 1048576).toFixed(0)}MB（使用可能な上限：約${(quota / 1073741824).toFixed(1)}GB）`;
+    }).catch(() => {});
+    else { const u = $('#usage'); if (u) u.textContent = ''; }
+  }
+}
+function onAdminInput(e) {
+  const el = e.target, f = el.dataset.f; if (!f) return;
+  if (f === 'circle') draft.circle = el.value;
+  else if (f === 'baseColor') draft.baseColor = el.value;
+  else if (f === 'phoneShelf') draft.phoneShelf = el.value;
+  else if (f === 'idleSec' || f === 'playIdleSec') draft[f] = Math.max(0, parseInt(el.value || '0', 10) || 0);
+  else if (f === 'startAtMarker') draft.startAtMarker = el.checked;
+  else if (f.startsWith('a.')) {
+    const a = draftAlbum(), k = f.slice(2);
+    if (k === 'show') { a.hidden = !el.checked; return; }
+    a[k] = k === 'price' ? (parseInt(el.value, 10) || 0) : el.value;
+    if (k === 'title' || k === 'color') $('#edJk').innerHTML = jacketHTML(a);
+  } else if (f.startsWith('t.')) {
+    const t = draftAlbum().tracks[+el.dataset.ti];
+    if (f === 't.title') t.title = el.value; else { t._mt = el.value; t.markers = parseMarkers(el.value); }
+  }
+}
+async function onAdminChange(e) {
+  const el = e.target; if (!el.dataset.file) { onAdminInput(e); return; }
+  let files = [...el.files]; if (!files.length) return;
+  if (el.dataset.file === 'track' && !isAudio(files[0])) { toast('音声ファイル（m4a・mp3など）を選んでください'); el.value = ''; return; }
+  const a = draftAlbum();
+  try {
+    if (el.dataset.file === 'jacket') { const k = uid(); await putBlob(k, files[0]); a.jacketKey = k; }
+    else if (el.dataset.file === 'track') {
+      const t = a.tracks[+el.dataset.ti], k = uid(); await putBlob(k, files[0]);
+      t.audioKey = k; t.demo = null; t.fileName = files[0].name;
+    } else {
+      toast('取り込んでいます…');
+      const total = files.length;
+      files = files.filter(isAudio);
+      if (files.length < total) toast('音声ファイル以外は取り込みませんでした');
+      files.sort((x, y) => x.name.localeCompare(y.name, 'ja', { numeric: true }));
+      for (const f of files) { const k = uid(); await putBlob(k, f); a.tracks.push({ id: uid(), title: titleFromName(f.name), audioKey: k, fileName: f.name, demo: null, markers: [] }); }
+    }
+    renderAdmin(); toast('取り込みました');
+  } catch (err) { toast('保存できませんでした。iPadの空き容量を確認してください'); }
+  el.value = '';
+}
+function move(arr, i, d) { const j = i + d; if (j < 0 || j >= arr.length) return; [arr[i], arr[j]] = [arr[j], arr[i]]; }
+$('#admin').addEventListener('input', onAdminInput);
+$('#admin').addEventListener('change', onAdminChange);
+$('#admin').addEventListener('click', async e => {
+  const b = e.target.closest('[data-act]'); if (!b) return;
+  const act = b.dataset.act, ai = +b.dataset.ai, ti = +b.dataset.ti;
+  if (act === 'save') return closeAdmin(true);
+  if (act === 'cancel') return closeAdmin(false);
+  if (act === 'show') { draft.albums[ai].hidden = !b.checked; renderAdmin(); return; }
+  if (act === 'up') move(draft.albums, ai, -1);
+  if (act === 'down') move(draft.albums, ai, 1);
+  if (act === 'edit') editAid = draft.albums[ai].id;
+  if (act === 'del' && confirm(`「${draft.albums[ai].title}」を削除しますか？`)) draft.albums.splice(ai, 1);
+  if (act === 'addAlbum') { const n = { id: uid(), title: '新しいアルバム', subtitle: '', price: 1000, status: 'new', color: '#5a5a5a', jacketKey: null, tracks: [] }; draft.albums.push(n); editAid = n.id; }
+  if (act === 'back') editAid = null;
+  if (act === 'tup') move(draftAlbum().tracks, ti, -1);
+  if (act === 'tdown') move(draftAlbum().tracks, ti, 1);
+  if (act === 'tdel' && confirm(`「${draftAlbum().tracks[ti].title}」を削除しますか？`)) draftAlbum().tracks.splice(ti, 1);
+  if (act === 'reset') {
+    if (!confirm('登録したアルバム・音源・画像をすべて削除して、デモの状態に戻します。よろしいですか？')) return;
+    stopAll();
+    try { await idb('blobs', 'readwrite', s => s.clear()); } catch (err) {}
+    urlCache.forEach(u => URL.revokeObjectURL(u)); urlCache.clear();
+    draft = demoConfig(); return closeAdmin(true);
+  }
+  renderAdmin();
+  $('#admin .ad-body').scrollTop = (act === 'edit' || act === 'back' || act === 'addAlbum') ? 0 : $('#admin .ad-body').scrollTop;
+});
+
+/* ---------- toast ---------- */
+let tt = null;
+function toast(msg) { const t = $('#toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(tt); tt = setTimeout(() => t.classList.remove('show'), 2400); }
+
+/* ---------- init ---------- */
+let swReady = false;
+if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+  navigator.serviceWorker.register('./sw.js').then(() => navigator.serviceWorker.ready).then(() => { swReady = true; }).catch(() => {});
+}
+addEventListener('error', e => toast('エラー：' + (e.message || '不明なエラー')));
+addEventListener('unhandledrejection', e => toast('エラー：' + ((e.reason && e.reason.message) || '不明なエラー')));
+(async function init() {
+  try { config = await withTimeout(kvGet('config'), 5000); } catch (e) { storageOK = false; }
+  if (!config || !Array.isArray(config.albums)) { config = demoConfig(); if (storageOK) saveConfig(); }
+  if (config.playIdleSec == null) config.playIdleSec = 180;
+  if (!config.baseColor) config.baseColor = '#6b5ce7';
+  if (!config.phoneShelf) config.phoneShelf = 'h';
+  setView('list');
+  for (const a of config.albums) if (a.jacketKey) { try { await withTimeout(blobURL(a.jacketKey), 3000); } catch (e) {} }
+  selId = shown()[0] && shown()[0].id;
+  renderAll(); prepareAlbum(selId);
+  if (!storageOK) toast('この画面ではデータを保存できません。Safariで開いてください');
+  try { navigator.storage && navigator.storage.persist && navigator.storage.persist(); } catch (e) {}
+})();
+})();
+</script>
+</body>
+</html>
